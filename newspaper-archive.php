@@ -118,6 +118,28 @@ function newspaper_archive_private_dir() {
 }
 
 /**
+ * Check whether another issue already uses this attachment.
+ *
+ * @param int $attachment_id Attachment ID.
+ * @param int $exclude_post_id Issue ID to exclude.
+ * @return bool
+ */
+function newspaper_archive_attachment_in_use( $attachment_id, $exclude_post_id = 0 ) {
+	$issues = get_posts(
+		array(
+			'post_type'      => 'newspaper_issue',
+			'post_status'    => array( 'publish', 'private', 'draft', 'pending', 'future' ),
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'post__not_in'   => array( absint( $exclude_post_id ) ),
+			'meta_key'       => '_newspaper_archive_pdf_id',
+			'meta_value'     => absint( $attachment_id ),
+		)
+	);
+	return ! empty( $issues );
+}
+
+/**
  * Move an attachment into or out of private storage as its issue access changes.
  *
  * The original uploads-relative path is retained in attachment metadata so a
@@ -482,12 +504,16 @@ function newspaper_archive_save( $post_id ) {
 	$access = newspaper_archive_sanitize_access( sanitize_text_field( wp_unslash( $_POST['newspaper_archive_access'] ?? 'public' ) ) );
 	$old_pdf_id = (int) newspaper_archive_meta( $post_id, 'pdf_id' );
 
+	// An attachment must belong to one issue so public and members-only access cannot conflict.
+	if ( $pdf_id && newspaper_archive_attachment_in_use( $pdf_id, $post_id ) ) {
+		$pdf_id = 0;
+	}
 	// Do not mark a file as members-only unless it was moved into protected storage.
 	if ( $pdf_id && ! newspaper_archive_set_file_access( $pdf_id, $access ) ) {
 		$pdf_id = 0;
 	}
-	// Restore the previous attachment when it is no longer assigned to this issue.
-	if ( $old_pdf_id && $old_pdf_id !== $pdf_id ) {
+	// Restore the previous attachment only when no other issue references it.
+	if ( $old_pdf_id && $old_pdf_id !== $pdf_id && ! newspaper_archive_attachment_in_use( $old_pdf_id, $post_id ) ) {
 		newspaper_archive_set_file_access( $old_pdf_id, 'public' );
 	}
 	update_post_meta( $post_id, '_newspaper_archive_access', $access );

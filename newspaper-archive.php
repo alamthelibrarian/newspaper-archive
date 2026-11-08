@@ -3,7 +3,7 @@
  * Plugin Name:       Newspaper Archive
  * Plugin URI:        https://github.com/alamthelibrarian/newspaper-archive
  * Description:       Manage and display a library's digital newspaper collection (PDF): issue metadata, search, title and year filters, and a built-in PDF reader.
- * Version:           0.2.0
+ * Version:           0.3.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Muhammad Saiful Alam
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NEWSPAPER_ARCHIVE_VERSION', '0.2.0' );
+define( 'NEWSPAPER_ARCHIVE_VERSION', '0.3.0' );
 define( 'NEWSPAPER_ARCHIVE_FILE', __FILE__ );
 define( 'NEWSPAPER_ARCHIVE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -80,6 +80,133 @@ function newspaper_archive_can_access( $post_id ) {
 	 * @param int  $post_id Issue ID.
 	 */
 	return (bool) apply_filters( 'newspaper_archive_can_access', $can, $post_id );
+}
+
+/**
+ * Ensure the private PDF directory has access-denial files for Apache and IIS.
+ *
+ * Nginx does not read .htaccess; its server configuration must deny this
+ * directory separately (documented in SECURITY.md).
+ *
+ * @return string|false Absolute private directory, or false on failure.
+ */
+function newspaper_archive_private_dir() {
+	$uploads = wp_upload_dir();
+	if ( ! empty( $uploads['error'] ) || empty( $uploads['basedir'] ) ) {
+		return false;
+	}
+	$directory = trailingslashit( $uploads['basedir'] ) . 'newspaper-archive-private';
+	if ( ! is_dir( $directory ) && ! wp_mkdir_p( $directory ) ) {
+		return false;
+	}
+	$rules = "<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nOrder Allow,Deny\nDeny from all\n</IfModule>\nOptions -Indexes\n";
+	$deny  = trailingslashit( $directory ) . '.htaccess';
+	if ( ! file_exists( $deny ) && false === file_put_contents( $deny, $rules ) ) {
+		return false;
+	}
+	$web_config = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" .
+		'<configuration><system.webServer><authorization><deny users="*" /></authorization></system.webServer></configuration>';
+	$config_path = trailingslashit( $directory ) . 'web.config';
+	if ( ! file_exists( $config_path ) && false === file_put_contents( $config_path, $web_config ) ) {
+		return false;
+	}
+	$index = trailingslashit( $directory ) . 'index.php';
+	if ( ! file_exists( $index ) && false === file_put_contents( $index, "<?php\n// Silence is golden.\n" ) ) {
+		return false;
+	}
+	return $directory;
+}
+
+/**
+ * Move an attachment into or out of private storage as its issue access changes.
+ *
+ * The original uploads-relative path is retained in attachment metadata so a
+ * public PDF can be restored to its normal Media Library URL.
+ *
+ * @param int    $attachment_id Attachment ID.
+ * @param string $access        'members' or 'public'.
+ * @return bool Whether the requested storage transition succeeded.
+ */
+function newspaper_archive_set_file_access( $attachment_id, $access ) {
+	$attachment_id = absint( $attachment_id );
+	$uploads       = wp_upload_dir();
+	if ( ! $attachment_id || ! empty( $uploads['error'] ) || empty( $uploads['basedir'] ) ) {
+		return false;
+	}
+	$base_dir      = wp_normalize_path( untrailingslashit( $uploads['basedir'] ) );
+	$relative      = get_post_meta( $attachment_id, '_wp_attached_file', true );
+	$original      = get_post_meta( $attachment_id, '_newspaper_archive_original_file', true );
+	$relative      = wp_normalize_path( (string) $relative );
+	$original      = wp_normalize_path( (string) $original );
+	$private_rel   = 'newspaper-archive-private/' . $attachment_id . '-' . sanitize_file_name( basename( $relative ) );
+
+	if ( 'members' === $access ) {
+		if ( $original && 0 === strpos( $relative, 'newspaper-archive-private/' ) ) {
+			return is_readable( get_attached_file( $attachment_id ) );
+		}
+		if ( ! $relative || 0 === strpos( $relative, '/' ) || preg_match( '/(^|\\/)\\.\\.(\\/|$)/', $relative ) ) {
+			return false;
+		}
+		$source = trailingslashit( $base_dir ) . $relative;
+		$real   = realpath( $source );
+		if ( ! $real || 0 !== strpos( wp_normalize_path( $real ), trailingslashit( $base_dir ) ) || ! is_readable( $real ) ) {
+			return false;
+		}
+		$directory = newspaper_archive_private_dir();
+		if ( ! $directory ) {
+			return false;
+		}
+		$filename = $attachment_id . '-' . sanitize_file_name( basename( $relative ) );
+		$target   = trailingslashit( $directory ) . $filename;
+		$private_rel = 'newspaper-archive-private/' . $filename;
+		if ( file_exists( $target ) && wp_normalize_path( $real ) !== wp_normalize_path( $target ) ) {
+			$filename    = $attachment_id . '-' . wp_generate_password( 8, false ) . '-' . sanitize_file_name( basename( $relative ) );
+			$target      = trailingslashit( $directory ) . $filename;
+			$private_rel = 'newspaper-archive-private/' . $filename;
+		}
+		if ( ! @rename( $real, $target ) ) {
+			if ( ! @copy( $real, $target ) || ! @unlink( $real ) ) {
+				if ( file_exists( $target ) ) {
+					@unlink( $target );
+				}
+				return false;
+			}
+		}
+		update_post_meta( $attachment_id, '_newspaper_archive_original_file', $relative );
+		update_post_meta( $attachment_id, '_wp_attached_file', $private_rel );
+		return true;
+	}
+
+	if ( ! $original ) {
+		return true;
+	}
+	if ( 0 !== strpos( $original, '/' ) && ! preg_match( '/(^|\\/)\\.\\.(\\/|$)/', $original ) ) {
+		$target = trailingslashit( $base_dir ) . $original;
+		$source = trailingslashit( $base_dir ) . $relative;
+		$target_dir = dirname( $target );
+		if ( ! is_dir( $target_dir ) && ! wp_mkdir_p( $target_dir ) ) {
+			return false;
+		}
+		if ( file_exists( $source ) ) {
+			if ( file_exists( $target ) ) {
+				return false;
+			}
+			if ( ! @rename( $source, $target ) ) {
+				if ( ! @copy( $source, $target ) || ! @unlink( $source ) ) {
+					if ( file_exists( $target ) ) {
+						@unlink( $target );
+					}
+					return false;
+				}
+			}
+		} elseif ( ! file_exists( $target ) ) {
+			return false;
+		}
+		update_post_meta( $attachment_id, '_wp_attached_file', $original );
+		delete_post_meta( $attachment_id, '_newspaper_archive_original_file' );
+		return true;
+	}
+	return false;
 }
 
 /**
@@ -346,13 +473,24 @@ function newspaper_archive_save( $post_id ) {
 	update_post_meta( $post_id, '_newspaper_archive_date', newspaper_archive_sanitize_date( sanitize_text_field( wp_unslash( $_POST['newspaper_archive_date'] ?? '' ) ) ) );
 	update_post_meta( $post_id, '_newspaper_archive_edition', sanitize_text_field( wp_unslash( $_POST['newspaper_archive_edition'] ?? '' ) ) );
 	update_post_meta( $post_id, '_newspaper_archive_pages', absint( $_POST['newspaper_archive_pages'] ?? 0 ) );
-	update_post_meta( $post_id, '_newspaper_archive_access', newspaper_archive_sanitize_access( sanitize_text_field( wp_unslash( $_POST['newspaper_archive_access'] ?? 'public' ) ) ) );
 
 	// Only accept a PDF attachment the user is allowed to use.
 	$pdf_id = absint( $_POST['newspaper_archive_pdf_id'] ?? 0 );
 	if ( $pdf_id && ( 'application/pdf' !== get_post_mime_type( $pdf_id ) || ! current_user_can( 'read_post', $pdf_id ) ) ) {
 		$pdf_id = 0;
 	}
+	$access = newspaper_archive_sanitize_access( sanitize_text_field( wp_unslash( $_POST['newspaper_archive_access'] ?? 'public' ) ) );
+	$old_pdf_id = (int) newspaper_archive_meta( $post_id, 'pdf_id' );
+
+	// Do not mark a file as members-only unless it was moved into protected storage.
+	if ( $pdf_id && ! newspaper_archive_set_file_access( $pdf_id, $access ) ) {
+		$pdf_id = 0;
+	}
+	// Restore the previous attachment when it is no longer assigned to this issue.
+	if ( $old_pdf_id && $old_pdf_id !== $pdf_id ) {
+		newspaper_archive_set_file_access( $old_pdf_id, 'public' );
+	}
+	update_post_meta( $post_id, '_newspaper_archive_access', $access );
 	update_post_meta( $post_id, '_newspaper_archive_pdf_id', $pdf_id );
 }
 add_action( 'save_post_newspaper_issue', 'newspaper_archive_save' );
@@ -447,10 +585,14 @@ function newspaper_archive_serve_pdf() {
 	}
 
 	$pdf_id = (int) newspaper_archive_meta( $post_id, 'pdf_id' );
-	$path   = $pdf_id ? get_attached_file( $pdf_id ) : '';
-	if ( ! $path || ! is_readable( $path ) || 'application/pdf' !== get_post_mime_type( $pdf_id ) ) {
+	$path = $pdf_id ? get_attached_file( $pdf_id ) : '';
+	$original = $pdf_id ? get_post_meta( $pdf_id, '_newspaper_archive_original_file', true ) : '';
+	$private_prefix = wp_normalize_path( trailingslashit( wp_upload_dir()['basedir'] ) . 'newspaper-archive-private/' );
+	$real_path = $path ? realpath( $path ) : false;
+	if ( ! $path || ! $original || ! $real_path || 0 !== strpos( wp_normalize_path( $real_path ), $private_prefix ) || ! is_readable( $real_path ) || 'application/pdf' !== get_post_mime_type( $pdf_id ) ) {
 		wp_die( esc_html__( 'File not found.', 'newspaper-archive' ), '', array( 'response' => 404 ) );
 	}
+	$path = $real_path;
 
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 	$download = isset( $_GET['newspaper_archive_dl'] );

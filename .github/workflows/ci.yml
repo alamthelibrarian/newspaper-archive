@@ -31,3 +31,24 @@ jobs:
           tools: composer
       - run: composer install --no-interaction --prefer-dist
       - run: vendor/bin/phpcs
+
+  package:
+    name: Release ZIP contents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build distributable ZIP
+        run: |
+          mkdir -p build/newspaper-archive
+          rsync -a --exclude-from=.distignore ./ build/newspaper-archive/
+          cd build
+          zip -rq ../newspaper-archive-test.zip newspaper-archive
+      - name: Verify distributable
+        run: |
+          unzip -Z1 newspaper-archive-test.zip > package-files.txt
+          grep -qx 'newspaper-archive/newspaper-archive.php' package-files.txt
+          grep -qx 'newspaper-archive/readme.txt' package-files.txt
+          grep -qx 'newspaper-archive/uninstall.php' package-files.txt
+          grep -qx 'newspaper-archive/languages/newspaper-archive-id_ID.po' package-files.txt
+          ! grep -qE '(^|/)(\.git|\.github|vendor|node_modules)(/|$)' package-files.txt
+          ! grep -q 'newspaper-archive/README.md' package-files.txt

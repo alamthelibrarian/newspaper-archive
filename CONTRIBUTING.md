@@ -1,47 +1,47 @@
-# Berkontribusi
+# Contributing
 
-Terima kasih sudah tertarik! Kontribusi berupa laporan bug, usulan fitur, terjemahan, dokumentasi, dan kode sangat disambut.
+Thank you for your interest in contributing! Bug reports, feature suggestions, translations, documentation, and code contributions are welcome.
 
-## Etika bersama
+## Code of conduct
 
-Bersikaplah sopan dan konstruktif. Kritik ditujukan pada kode dan gagasan, bukan pada orangnya. Perilaku melecehkan tidak diterima.
+Be respectful and constructive. Critique code and ideas, not people. Harassment is not tolerated.
 
-## Melapor bug atau mengusulkan fitur
+## Reporting bugs or requesting features
 
-Buka [issue](../../issues) dengan templat yang tersedia. Sertakan versi WordPress, versi PHP, tema yang dipakai, langkah mereproduksi, dan hasil yang diharapkan. **Celah keamanan jangan dilaporkan lewat issue publik**; lihat [SECURITY.md](SECURITY.md).
+Open an [issue](../../issues) using the available template. Include your WordPress version, PHP version, active theme, reproduction steps, and expected result. **Do not report security vulnerabilities through public issues**; see [SECURITY.md](SECURITY.md).
 
-## Menyiapkan lingkungan pengembangan
+## Development setup
 
 ```bash
 git clone https://github.com/alamthelibrarian/newspaper-archive.git
 cd newspaper-archive
-composer install        # memasang PHP_CodeSniffer + WordPress Coding Standards
-composer lint           # php -l pada semua berkas
-composer cs             # cek gaya kode
+composer install        # Install PHP_CodeSniffer and WordPress Coding Standards
+composer lint           # Run php -l on all PHP files
+composer cs             # Run coding standards checks
 ```
 
-Letakkan folder di `wp-content/plugins/` pada WordPress lokal (mis. wp-env, LocalWP, atau Docker).
+Place the plugin folder in `wp-content/plugins/` in a local WordPress environment (for example, wp-env, LocalWP, or Docker).
 
-## Pedoman kode
+## Coding guidelines
 
-- Ikuti [WordPress Coding Standards](https://developer.wordpress.org/coding-standards/wordpress-coding-standards/php/).
-- Semua fungsi, konstanta, dan hook global memakai prefix `newspaper_archive_` / `NEWSPAPER_ARCHIVE_`.
-- Escape semua keluaran (`esc_html`, `esc_attr`, `esc_url`) dan sanitasi semua masukan; periksa nonce dan kapabilitas.
-- String antarmuka ditulis dalam bahasa Inggris dengan text domain `newspaper-archive`, lalu diterjemahkan di `languages/`.
-- Perbarui `CHANGELOG.md` untuk setiap perubahan yang terlihat pengguna.
+- Follow the [WordPress Coding Standards](https://developer.wordpress.org/coding-standards/wordpress-coding-standards/php/).
+- Prefix all global functions, constants, and hooks with `newspaper_archive_` / `NEWSPAPER_ARCHIVE_`.
+- Escape output (`esc_html`, `esc_attr`, `esc_url`) and sanitize input; verify nonces and capabilities.
+- Write interface strings in English using the `newspaper-archive` text domain, then provide translations in `languages/`.
+- Update `CHANGELOG.md` for every user-visible change.
 
-## Terjemahan
+## Translations
 
-Berkas `languages/newspaper-archive.pot` adalah templatnya. Salin menjadi `newspaper-archive-<locale>.po`, terjemahkan (mis. dengan Poedit), lalu kompilasi ke `.mo`:
+The `languages/newspaper-archive.pot` file is the translation template. Copy it to `newspaper-archive-<locale>.po`, translate it (for example, with Poedit), and compile it to `.mo`:
 
 ```bash
 msgfmt -o languages/newspaper-archive-id_ID.mo languages/newspaper-archive-id_ID.po
 ```
 
-## Pull request
+## Pull requests
 
-1. Fork, lalu buat cabang dari `main` (`fix/judul-singkat` atau `feat/judul-singkat`).
-2. Buat perubahan kecil dan terfokus; satu PR untuk satu tujuan.
-3. Pastikan CI hijau, lalu jelaskan apa dan mengapa pada deskripsi PR.
+1. Fork the repository and create a branch from `main` (`fix/short-description` or `feat/short-description`).
+2. Keep changes small and focused; use one pull request per objective.
+3. Ensure CI passes, then explain what changed and why in the pull request description.
 
-Dengan berkontribusi, Anda setuju kontribusi Anda dilisensikan di bawah GPL-2.0-or-later.
+By contributing, you agree that your contributions will be licensed under GPL-2.0-or-later.

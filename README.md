@@ -1,31 +1,29 @@
 # Newspaper Archive
 
-Plugin WordPress untuk menerbitkan **koleksi koran digital (PDF)** milik perpustakaan atau arsip: metadata per edisi, pencarian, filter judul dan tahun, serta pembaca PDF bawaan.
-
-*English: a WordPress plugin for libraries and archives to publish digital newspaper issues (PDF) with metadata, search, title/year filters and a built-in PDF reader. The interface is translation-ready (English source, Indonesian included).*
+A WordPress plugin for libraries and archives to publish and manage digital newspaper collections (PDF). It provides issue metadata, search, title and year filters, public or members-only access, and a built-in PDF reader.
 
 [![CI](https://github.com/alamthelibrarian/newspaper-archive/actions/workflows/ci.yml/badge.svg)](https://github.com/alamthelibrarian/newspaper-archive/actions/workflows/ci.yml)
 [![License: GPL v2+](https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg)](LICENSE)
 
-## Fitur
+## Features
 
-- Tipe konten **Edisi Koran** dan taksonomi **Judul Koran** (mis. Suara Merdeka, Kedaulatan Rakyat).
-- Metadata per edisi: tanggal terbit, edisi/nomor, jumlah halaman, berkas PDF, dan hak akses (publik atau khusus anggota).
-- Shortcode `[newspaper_archive]` dengan pencarian, filter judul dan tahun, kartu sampul, serta penomoran halaman.
-- Halaman edisi dengan pembaca PDF tertanam dan tombol unduh.
-- Edisi khusus anggota dilayani lewat endpoint PHP yang memeriksa status login.
-- Meta tag **Dublin Core** pada halaman edisi; seluruh kolom tersedia lewat REST API.
-- Antarmuka dapat diterjemahkan (Inggris dan Indonesia sudah disertakan).
+- **Newspaper Issue** custom post type and **Newspaper Titles** taxonomy.
+- Issue metadata: publication date, edition/number, page count, PDF attachment, and access level (public or members only).
+- `[newspaper_archive]` shortcode with search, title and year filters, cover images, and pagination.
+- Individual issue pages with an embedded PDF reader and download link.
+- Members-only PDFs stored in a protected directory and delivered through an access-checked PHP endpoint.
+- Dublin Core metadata on issue pages and issue fields exposed through the REST API.
+- Translation-ready, with English as the original interface language and an Indonesian translation source included.
 
-## Instalasi
+## Installation
 
-1. Unduh `newspaper-archive-x.y.z.zip` dari halaman [Releases](../../releases).
-2. Di WordPress: **Plugins → Add New → Upload Plugin**, pilih zip, lalu **Activate**.
-3. Buka menu **Newspaper Archive → Tambah Edisi** (tampil sebagai **Arsip Koran** bila bahasa admin Indonesia), isi metadata dan pilih berkas PDF. Gambar unggulan dipakai sebagai sampul.
-4. Tambahkan nama koran lewat **Newspaper Archive → Judul Koran**.
-5. Buat halaman dan isi dengan shortcode `[newspaper_archive]`.
+1. Download the latest release ZIP from [GitHub Releases](../../releases).
+2. In WordPress, go to **Plugins → Add New → Upload Plugin**, select the ZIP, and activate it.
+3. Open **Newspaper Archive → Add Issue**, enter the metadata, and select a PDF. The featured image is used as the issue cover.
+4. Add newspaper names under **Newspaper Archive → Newspaper Titles**.
+5. Create a page and add the `[newspaper_archive]` shortcode.
 
-Kebutuhan: WordPress 6.0+ dan PHP 7.4+.
+Requirements: WordPress 6.0+ and PHP 7.4+.
 
 ## Shortcode
 
@@ -34,47 +32,47 @@ Kebutuhan: WordPress 6.0+ dan PHP 7.4+.
 [newspaper_archive per_page="20" title="suara-merdeka" show_filter="no"]
 ```
 
-| Atribut | Bawaan | Keterangan |
-|---|---|---|
-| `per_page` | `12` | Jumlah edisi per halaman |
-| `title` | kosong | Slug judul koran untuk membatasi daftar |
-| `show_filter` | `yes` | `no` menyembunyikan formulir pencarian |
+| Attribute | Default | Description |
+|---|---:|---|
+| `per_page` | `12` | Number of issues per page |
+| `title` | empty | Newspaper title slug used to filter the collection |
+| `show_filter` | `yes` | Set to `no` to hide the search and filter form |
 
-Arsip otomatis: `/newspaper-issues/` dan `/newspaper-title/{slug}/`. Slug dapat diubah lewat filter `newspaper_archive_collection_slug`, `newspaper_archive_issue_slug`, dan `newspaper_archive_title_slug`.
+The collection archive is available at `/newspaper-issues/`, and each newspaper title has an archive at `/newspaper-title/{slug}/`. These slugs can be changed with the `newspaper_archive_collection_slug`, `newspaper_archive_issue_slug`, and `newspaper_archive_title_slug` filters.
 
-## Catatan keamanan: edisi khusus anggota
+## Member-only PDF protection
 
-- **Publik:** PDF tetap berada di lokasi Media Library dan menggunakan URL WordPress biasa. Pembaca tertanam dan tautan unduh publik tetap bekerja normal.
-- **Khusus anggota:** saat edisi disimpan, plugin memindahkan PDF ke `wp-content/uploads/newspaper-archive-private/` (atau direktori uploads yang dikonfigurasi), membuat aturan penolakan untuk Apache dan IIS, lalu hanya menyajikannya melalui endpoint PHP setelah pemeriksaan login.
-- Satu lampiran PDF hanya boleh digunakan oleh satu edisi agar pengaturan publik dan anggota tidak saling bertentangan.
-- Jika server tidak mengizinkan pembuatan direktori atau pemindahan berkas, plugin tidak akan menyimpan lampiran tersebut sebagai edisi anggota. Pastikan proses PHP memiliki izin tulis yang sesuai.
-- **Nginx memerlukan aturan server tersendiri** karena Nginx tidak membaca `.htaccess`. Tambahkan aturan yang sesuai dengan lokasi uploads pada konfigurasi server (contoh di [SECURITY.md](SECURITY.md)) sebelum mengandalkan penyimpanan anggota.
-- Edisi anggota lama yang PDF-nya masih berada di Media Library publik harus dibuka dan disimpan ulang setelah pembaruan agar berkasnya dipindahkan. Buat cadangan terlebih dahulu.
-- Filter `newspaper_archive_can_access` tetap tersedia untuk menyesuaikan pemeriksaan izin di tingkat aplikasi.
+- **Public issues:** PDFs remain in the WordPress Media Library and retain their normal WordPress URLs. Public reading and downloads work as usual.
+- **Members-only issues:** when an issue is saved, its PDF is moved to `wp-content/uploads/newspaper-archive-private/` (or the configured uploads directory) and served through the plugin after a login check.
+- A PDF attachment can be assigned to only one issue, preventing public and members-only access settings from conflicting.
+- If the server cannot create the protected directory or move the file, the plugin will not attach that PDF as a members-only file. Ensure the PHP process has the required filesystem permissions.
+- **Nginx requires an additional server rule** because it does not read `.htaccess`. See [SECURITY.md](SECURITY.md) for the configuration example.
+- Existing members-only issues must be opened and saved again after updating so their PDFs are moved from the public Media Library location. Back up the site first.
+- The `newspaper_archive_can_access` filter is available to customize application-level access checks.
 
-Perlindungan ini membatasi akses langsung melalui web server yang dikonfigurasi dengan benar. Administrator tetap perlu memastikan backup, cache/CDN, dan salinan lama dari URL publik tidak membuat salinan PDF tetap terbuka.
+This protection depends on correct web-server configuration. Administrators should also review backups, CDN caches, and any previously exposed public copies of a PDF.
 
-## Menghapus plugin
+## Uninstalling
 
-Secara bawaan **tidak ada data yang dihapus** saat plugin dihapus. Untuk ikut menghapus edisi dan judul koran, tambahkan ini ke `wp-config.php` sebelum menghapus plugin:
+By default, uninstalling the plugin does **not** delete issue or title data. To delete them as well, add the following to `wp-config.php` before uninstalling:
 
 ```php
 define( 'NEWSPAPER_ARCHIVE_REMOVE_DATA', true );
 ```
 
-Berkas PDF di Media Library tidak pernah dihapus.
+PDF files in the Media Library are never deleted by the uninstall routine.
 
-## Rencana pengembangan
+## Development roadmap
 
-- Pencarian teks penuh dari hasil OCR.
-- Impor massal (CSV/folder PDF) dan pembuatan sampul otomatis.
-- Navigasi kalender per tanggal.
-- Ekspor metadata Dublin Core/MARC dan pembaca PDF.js per halaman.
+- Full-text search using OCR output.
+- Bulk import from CSV or PDF folders, with automatic cover generation.
+- Calendar-based browsing by publication date.
+- Dublin Core/MARC metadata export and a page-by-page PDF.js reader.
 
-## Berkontribusi
+## Contributing
 
-Lihat [CONTRIBUTING.md](CONTRIBUTING.md). Laporan celah keamanan: [SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md). For security reports, see [SECURITY.md](SECURITY.md).
 
-## Lisensi
+## License
 
 [GPL-2.0-or-later](LICENSE).

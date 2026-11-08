@@ -12,13 +12,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build zip
+      - name: Verify release version
+        shell: bash
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PLUGIN_VERSION="$(sed -n 's/^[[:space:]]*\* Version:[[:space:]]*//p' newspaper-archive.php | head -n 1)"
+          STABLE_TAG="$(sed -n 's/^Stable tag: //p' readme.txt | head -n 1)"
+          test -n "$TAG_VERSION"
+          test "$TAG_VERSION" = "$PLUGIN_VERSION"
+          test "$TAG_VERSION" = "$STABLE_TAG"
+      - name: Build distributable ZIP
         run: |
           mkdir -p build/newspaper-archive
           rsync -a --exclude-from=.distignore ./ build/newspaper-archive/
           cd build
           zip -rq "../newspaper-archive-${GITHUB_REF_NAME}.zip" newspaper-archive
-      - name: Publish release
+      - name: Verify ZIP contents
+        run: |
+          unzip -Z1 "newspaper-archive-${GITHUB_REF_NAME}.zip" > package-files.txt
+          grep -qx 'newspaper-archive/newspaper-archive.php' package-files.txt
+          grep -qx 'newspaper-archive/readme.txt' package-files.txt
+          grep -qx 'newspaper-archive/uninstall.php' package-files.txt
+          grep -qx 'newspaper-archive/languages/newspaper-archive-id_ID.po' package-files.txt
+          ! grep -qE '(^|/)(\.git|\.github|vendor|node_modules)(/|$)' package-files.txt
+          ! grep -q 'newspaper-archive/README.md' package-files.txt
+      - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: newspaper-archive-${{ github.ref_name }}.zip

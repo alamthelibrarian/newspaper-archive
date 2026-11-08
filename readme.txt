@@ -4,7 +4,7 @@ Tags: library, newspaper, archive, pdf, digital collection
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.2.0
+Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,7 +35,7 @@ The collection archive is available at `/newspaper-issues/` and each title at `/
 
 = Members-only files: important note =
 
-Members-only issues are delivered through the plugin's access check. The PDF still lives in the normal Media Library folder, so anyone who knows that exact file URL could open it. For strictly confidential material, restrict direct access to the PDF files at the web server level.
+Public PDFs remain in the normal Media Library and keep their usual WordPress URLs. When a members-only issue is saved, its PDF is moved into a protected uploads subdirectory and served through the plugin after a login check. Apache and IIS denial files are created automatically. Nginx administrators must add a server rule for `/wp-content/uploads/newspaper-archive-private/`; see the repository's SECURITY.md for details. Existing members-only issues must be saved again after updating so their PDFs are moved into protected storage.
 
 == Installation ==
 
@@ -56,10 +56,14 @@ Nothing is deleted by default. To remove issues and titles on uninstall, define 
 
 == Changelog ==
 
+= 0.3.0 =
+* Members-only PDFs are moved to protected storage and served after access checks; public PDFs retain normal Media Library URLs.
+* Added Apache/IIS denial files, Nginx configuration guidance, and a one-issue-per-attachment rule.
+
 = 0.2.0 =
 * First public release: unique function prefixes, translation-ready (English source, Indonesian included), members-only PDF endpoint, REST-exposed meta, Dublin Core tags, safe uninstall, sortable date column.
 
 == Upgrade Notice ==
 
-= 0.2.0 =
-First public release.
+= 0.3.0 =
+Save existing members-only issues again to migrate their PDFs into protected storage. Nginx servers require an additional deny rule.

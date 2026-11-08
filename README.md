@@ -44,7 +44,15 @@ Arsip otomatis: `/newspaper-issues/` dan `/newspaper-title/{slug}/`. Slug dapat 
 
 ## Catatan keamanan: edisi khusus anggota
 
-Edisi "khusus anggota" dilayani lewat pemeriksaan login di plugin, sehingga tombol dan pembaca tidak pernah menampilkan URL langsung. Namun berkas PDF tetap berada di folder Media Library biasa, jadi **siapa pun yang mengetahui URL persis berkas itu masih bisa membukanya**. Untuk materi yang benar-benar rahasia, batasi akses langsung ke berkas PDF di level server web (Nginx/Apache). Developer dapat mengubah aturan akses lewat filter `newspaper_archive_can_access`.
+- **Publik:** PDF tetap berada di lokasi Media Library dan menggunakan URL WordPress biasa. Pembaca tertanam dan tautan unduh publik tetap bekerja normal.
+- **Khusus anggota:** saat edisi disimpan, plugin memindahkan PDF ke `wp-content/uploads/newspaper-archive-private/` (atau direktori uploads yang dikonfigurasi), membuat aturan penolakan untuk Apache dan IIS, lalu hanya menyajikannya melalui endpoint PHP setelah pemeriksaan login.
+- Satu lampiran PDF hanya boleh digunakan oleh satu edisi agar pengaturan publik dan anggota tidak saling bertentangan.
+- Jika server tidak mengizinkan pembuatan direktori atau pemindahan berkas, plugin tidak akan menyimpan lampiran tersebut sebagai edisi anggota. Pastikan proses PHP memiliki izin tulis yang sesuai.
+- **Nginx memerlukan aturan server tersendiri** karena Nginx tidak membaca `.htaccess`. Tambahkan aturan yang sesuai dengan lokasi uploads pada konfigurasi server (contoh di [SECURITY.md](SECURITY.md)) sebelum mengandalkan penyimpanan anggota.
+- Edisi anggota lama yang PDF-nya masih berada di Media Library publik harus dibuka dan disimpan ulang setelah pembaruan agar berkasnya dipindahkan. Buat cadangan terlebih dahulu.
+- Filter `newspaper_archive_can_access` tetap tersedia untuk menyesuaikan pemeriksaan izin di tingkat aplikasi.
+
+Perlindungan ini membatasi akses langsung melalui web server yang dikonfigurasi dengan benar. Administrator tetap perlu memastikan backup, cache/CDN, dan salinan lama dari URL publik tidak membuat salinan PDF tetap terbuka.
 
 ## Menghapus plugin
 

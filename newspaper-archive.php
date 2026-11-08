@@ -83,6 +83,22 @@ function newspaper_archive_can_access( $post_id ) {
 }
 
 /**
+ * Initialize the WordPress filesystem abstraction.
+ *
+ * @return WP_Filesystem_Base|false Filesystem instance.
+ */
+function newspaper_archive_filesystem() {
+	global $wp_filesystem;
+	if ( ! function_exists( 'WP_Filesystem' ) ) {
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+	}
+	if ( ! WP_Filesystem() ) {
+		return false;
+	}
+	return $wp_filesystem;
+}
+
+/**
  * Ensure the private PDF directory has access-denial files for Apache and IIS.
  *
  * Nginx does not read .htaccess; its server configuration must deny this
@@ -99,19 +115,20 @@ function newspaper_archive_private_dir() {
 	if ( ! is_dir( $directory ) && ! wp_mkdir_p( $directory ) ) {
 		return false;
 	}
-	$rules = "<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nOrder Allow,Deny\nDeny from all\n</IfModule>\nOptions -Indexes\n";
-	$deny  = trailingslashit( $directory ) . '.htaccess';
-	if ( ! file_exists( $deny ) && false === file_put_contents( $deny, $rules ) ) {
+	$filesystem = newspaper_archive_filesystem();
+	if ( ! $filesystem ) {
 		return false;
 	}
+	$rules      = "<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nOrder Allow,Deny\nDeny from all\n</IfModule>\nOptions -Indexes\n";
+	$deny       = trailingslashit( $directory ) . '.htaccess';
 	$web_config = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" .
 		'<configuration><system.webServer><authorization><deny users="*" /></authorization></system.webServer></configuration>';
 	$config_path = trailingslashit( $directory ) . 'web.config';
-	if ( ! file_exists( $config_path ) && false === file_put_contents( $config_path, $web_config ) ) {
-		return false;
-	}
-	$index = trailingslashit( $directory ) . 'index.php';
-	if ( ! file_exists( $index ) && false === file_put_contents( $index, "<?php\n// Silence is golden.\n" ) ) {
+	$index       = trailingslashit( $directory ) . 'index.php';
+	if ( ( ! file_exists( $deny ) && ! $filesystem->put_contents( $deny, $rules, FS_CHMOD_FILE ) ) ||
+		( ! file_exists( $config_path ) && ! $filesystem->put_contents( $config_path, $web_config, FS_CHMOD_FILE ) ) ||
+		( ! file_exists( $index ) && ! $filesystem->put_contents( $index, "<?php\n// Silence is golden.\n", FS_CHMOD_FILE ) )
+	) {
 		return false;
 	}
 	return $directory;
@@ -125,18 +142,16 @@ function newspaper_archive_private_dir() {
  * @return bool
  */
 function newspaper_archive_attachment_in_use( $attachment_id, $exclude_post_id = 0 ) {
-	$issues = get_posts(
-		array(
-			'post_type'      => 'newspaper_issue',
-			'post_status'    => array( 'publish', 'private', 'draft', 'pending', 'future' ),
-			'posts_per_page' => 1,
-			'fields'         => 'ids',
-			'post__not_in'   => array( absint( $exclude_post_id ) ),
-			'meta_key'       => '_newspaper_archive_pdf_id',
-			'meta_value'     => absint( $attachment_id ),
-		)
+	$args = array(
+		'post_type'      => 'newspaper_issue',
+		'post_status'    => array( 'publish', 'private', 'draft', 'pending', 'future' ),
+		'posts_per_page' => 1,
+		'fields'         => 'ids',
+		'post__not_in'   => array( absint( $exclude_post_id ) ),
+		'meta_key'       => '_newspaper_archive_pdf_id', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- one-row attachment ownership check.
+		'meta_value'     => absint( $attachment_id ), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- one-row attachment ownership check.
 	);
-	return ! empty( $issues );
+	return (bool) get_posts( $args );
 }
 
 /**
@@ -155,12 +170,13 @@ function newspaper_archive_set_file_access( $attachment_id, $access ) {
 	if ( ! $attachment_id || ! empty( $uploads['error'] ) || empty( $uploads['basedir'] ) ) {
 		return false;
 	}
-	$base_dir      = wp_normalize_path( untrailingslashit( $uploads['basedir'] ) );
-	$relative      = get_post_meta( $attachment_id, '_wp_attached_file', true );
-	$original      = get_post_meta( $attachment_id, '_newspaper_archive_original_file', true );
-	$relative      = wp_normalize_path( (string) $relative );
-	$original      = wp_normalize_path( (string) $original );
-	$private_rel   = 'newspaper-archive-private/' . $attachment_id . '-' . sanitize_file_name( basename( $relative ) );
+	$filesystem = newspaper_archive_filesystem();
+	if ( ! $filesystem ) {
+		return false;
+	}
+	$base_dir    = wp_normalize_path( untrailingslashit( $uploads['basedir'] ) );
+	$relative    = wp_normalize_path( (string) get_post_meta( $attachment_id, '_wp_attached_file', true ) );
+	$original    = wp_normalize_path( (string) get_post_meta( $attachment_id, '_newspaper_archive_original_file', true ) );
 
 	if ( 'members' === $access ) {
 		if ( $original && 0 === strpos( $relative, 'newspaper-archive-private/' ) ) {
@@ -181,55 +197,40 @@ function newspaper_archive_set_file_access( $attachment_id, $access ) {
 		}
 		$filename = $attachment_id . '-' . sanitize_file_name( basename( $relative ) );
 		$target   = trailingslashit( $directory ) . $filename;
-		$private_rel = 'newspaper-archive-private/' . $filename;
 		if ( file_exists( $target ) && wp_normalize_path( $real ) !== wp_normalize_path( $target ) ) {
-			$filename    = $attachment_id . '-' . wp_generate_password( 8, false ) . '-' . sanitize_file_name( basename( $relative ) );
-			$target      = trailingslashit( $directory ) . $filename;
-			$private_rel = 'newspaper-archive-private/' . $filename;
+			$filename = $attachment_id . '-' . wp_generate_password( 8, false ) . '-' . sanitize_file_name( basename( $relative ) );
+			$target   = trailingslashit( $directory ) . $filename;
 		}
-		if ( ! @rename( $real, $target ) ) {
-			if ( ! @copy( $real, $target ) || ! @unlink( $real ) ) {
-				if ( file_exists( $target ) ) {
-					@unlink( $target );
-				}
-				return false;
-			}
+		if ( ! $filesystem->move( $real, $target, false ) ) {
+			return false;
 		}
 		update_post_meta( $attachment_id, '_newspaper_archive_original_file', $relative );
-		update_post_meta( $attachment_id, '_wp_attached_file', $private_rel );
+		update_post_meta( $attachment_id, '_wp_attached_file', 'newspaper-archive-private/' . $filename );
 		return true;
 	}
 
 	if ( ! $original ) {
 		return true;
 	}
-	if ( 0 !== strpos( $original, '/' ) && ! preg_match( '/(^|\\/)\\.\\.(\\/|$)/', $original ) ) {
-		$target = trailingslashit( $base_dir ) . $original;
-		$source = trailingslashit( $base_dir ) . $relative;
-		$target_dir = dirname( $target );
-		if ( ! is_dir( $target_dir ) && ! wp_mkdir_p( $target_dir ) ) {
-			return false;
-		}
-		if ( file_exists( $source ) ) {
-			if ( file_exists( $target ) ) {
-				return false;
-			}
-			if ( ! @rename( $source, $target ) ) {
-				if ( ! @copy( $source, $target ) || ! @unlink( $source ) ) {
-					if ( file_exists( $target ) ) {
-						@unlink( $target );
-					}
-					return false;
-				}
-			}
-		} elseif ( ! file_exists( $target ) ) {
-			return false;
-		}
-		update_post_meta( $attachment_id, '_wp_attached_file', $original );
-		delete_post_meta( $attachment_id, '_newspaper_archive_original_file' );
-		return true;
+	if ( 0 === strpos( $original, '/' ) || preg_match( '/(^|\\/)\\.\\.(\\/|$)/', $original ) ) {
+		return false;
 	}
-	return false;
+	$target     = trailingslashit( $base_dir ) . $original;
+	$source     = trailingslashit( $base_dir ) . $relative;
+	$target_dir = dirname( $target );
+	if ( ! is_dir( $target_dir ) && ! wp_mkdir_p( $target_dir ) ) {
+		return false;
+	}
+	if ( file_exists( $source ) ) {
+		if ( file_exists( $target ) || ! $filesystem->move( $source, $target, false ) ) {
+			return false;
+		}
+	} elseif ( ! file_exists( $target ) ) {
+		return false;
+	}
+	update_post_meta( $attachment_id, '_wp_attached_file', $original );
+	delete_post_meta( $attachment_id, '_newspaper_archive_original_file' );
+	return true;
 }
 
 /**
@@ -493,6 +494,7 @@ function newspaper_archive_save( $post_id ) {
 		return;
 	}
 
+	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- nonce is verified at the start of this save callback.
 	update_post_meta( $post_id, '_newspaper_archive_date', newspaper_archive_sanitize_date( sanitize_text_field( wp_unslash( $_POST['newspaper_archive_date'] ?? '' ) ) ) );
 	update_post_meta( $post_id, '_newspaper_archive_edition', sanitize_text_field( wp_unslash( $_POST['newspaper_archive_edition'] ?? '' ) ) );
 	update_post_meta( $post_id, '_newspaper_archive_pages', absint( $_POST['newspaper_archive_pages'] ?? 0 ) );
@@ -527,6 +529,7 @@ function newspaper_archive_save( $post_id ) {
 	} else {
 		delete_post_meta( $post_id, '_newspaper_archive_storage_error' );
 	}
+	// phpcs:enable
 }
 add_action( 'save_post_newspaper_issue', 'newspaper_archive_save' );
 

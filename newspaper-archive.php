@@ -164,7 +164,8 @@ function newspaper_archive_set_file_access( $attachment_id, $access ) {
 
 	if ( 'members' === $access ) {
 		if ( $original && 0 === strpos( $relative, 'newspaper-archive-private/' ) ) {
-			return is_readable( get_attached_file( $attachment_id ) );
+			$directory = newspaper_archive_private_dir();
+			return $directory && is_readable( get_attached_file( $attachment_id ) );
 		}
 		if ( ! $relative || 0 === strpos( $relative, '/' ) || preg_match( '/(^|\\/)\\.\\.(\\/|$)/', $relative ) ) {
 			return false;

@@ -5,10 +5,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Newspaper Archive 0.2.0\n"
+"Project-Id-Version: Newspaper Archive 0.3.0\n"
 "Report-Msgid-Bugs-To: https://github.com/alamthelibrarian/newspaper-archive/"
 "issues\n"
-"POT-Creation-Date: 2026-11-08 04:24+0000\n"
+"POT-Creation-Date: 2026-11-09 00:00+0000\n"
 "PO-Revision-Date: 2026-11-08 12:00+0700\n"
 "Last-Translator: Muhammad Saiful Alam\n"
 "Language-Team: Indonesian\n"

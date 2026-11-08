@@ -69,4 +69,4 @@ Lihat [CONTRIBUTING.md](CONTRIBUTING.md). Laporan celah keamanan: [SECURITY.md](
 
 ## Lisensi
 
-[GPL-2.0-or-later](LICENSE). © Muhammad Saiful Alam dan kontributor.
+[GPL-2.0-or-later](LICENSE).

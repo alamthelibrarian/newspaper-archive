@@ -502,7 +502,7 @@ function newspaper_archive_save( $post_id ) {
 	// Only accept a PDF attachment the user is allowed to use.
 	$pdf_id = absint( $_POST['newspaper_archive_pdf_id'] ?? 0 );
 	if ( $pdf_id && ( 'application/pdf' !== get_post_mime_type( $pdf_id ) || ! current_user_can( 'read_post', $pdf_id ) ) ) {
-		$pdf_id = 0;
+		$pdf_id        = 0;
 	}
 	$access     = newspaper_archive_sanitize_access( sanitize_text_field( wp_unslash( $_POST['newspaper_archive_access'] ?? 'public' ) ) );
 	$old_pdf_id = (int) newspaper_archive_meta( $post_id, 'pdf_id' );
@@ -515,7 +515,7 @@ function newspaper_archive_save( $post_id ) {
 	}
 	// Do not mark a file as members-only unless it was moved into protected storage.
 	if ( $pdf_id && ! newspaper_archive_set_file_access( $pdf_id, $access ) ) {
-		$pdf_id       = 0;
+		$pdf_id        = 0;
 		$storage_error = true;
 	}
 	// Restore the previous attachment only when no other issue references it.
@@ -538,6 +538,7 @@ add_action( 'save_post_newspaper_issue', 'newspaper_archive_save' );
  */
 function newspaper_archive_storage_admin_notice() {
 	$screen = get_current_screen();
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- post ID is capability-checked immediately below.
 	if ( ! $screen || 'newspaper_issue' !== $screen->post_type || empty( $_GET['post'] ) ) {
 		return;
 	}

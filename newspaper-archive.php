@@ -502,7 +502,7 @@ function newspaper_archive_save( $post_id ) {
 	// Only accept a PDF attachment the user is allowed to use.
 	$pdf_id = absint( $_POST['newspaper_archive_pdf_id'] ?? 0 );
 	if ( $pdf_id && ( 'application/pdf' !== get_post_mime_type( $pdf_id ) || ! current_user_can( 'read_post', $pdf_id ) ) ) {
-		$pdf_id        = 0;
+		$pdf_id = 0;
 	}
 	$access     = newspaper_archive_sanitize_access( sanitize_text_field( wp_unslash( $_POST['newspaper_archive_access'] ?? 'public' ) ) );
 	$old_pdf_id = (int) newspaper_archive_meta( $post_id, 'pdf_id' );

@@ -1,0 +1,17 @@
+.git
+.github
+.gitignore
+.gitattributes
+.editorconfig
+.distignore
+.phpcs-cache
+composer.json
+composer.lock
+phpcs.xml.dist
+vendor
+node_modules
+build
+README.md
+CONTRIBUTING.md
+SECURITY.md
+CHANGELOG.md

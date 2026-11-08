@@ -1,0 +1,227 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the Newspaper Archive package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Newspaper Archive 0.2.0\n"
+"Report-Msgid-Bugs-To: https://github.com/alamthelibrarian/newspaper-archive/"
+"issues\n"
+"POT-Creation-Date: 2026-11-08 04:24+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: newspaper-archive.php:168
+msgid "Newspaper Archive"
+msgstr ""
+
+#: newspaper-archive.php:169
+msgid "Newspaper Issue"
+msgstr ""
+
+#: newspaper-archive.php:170
+msgid "Add Issue"
+msgstr ""
+
+#: newspaper-archive.php:171
+msgid "Add Newspaper Issue"
+msgstr ""
+
+#: newspaper-archive.php:172
+msgid "Edit Newspaper Issue"
+msgstr ""
+
+#: newspaper-archive.php:173
+msgid "New Newspaper Issue"
+msgstr ""
+
+#: newspaper-archive.php:174
+msgid "View Newspaper Issue"
+msgstr ""
+
+#: newspaper-archive.php:175
+msgid "All Issues"
+msgstr ""
+
+#: newspaper-archive.php:176
+msgid "Search Issues"
+msgstr ""
+
+#: newspaper-archive.php:177
+msgid "No newspaper issues found."
+msgstr ""
+
+#: newspaper-archive.php:178
+msgid "No newspaper issues found in Trash."
+msgstr ""
+
+#: newspaper-archive.php:194
+msgid "Newspaper Titles"
+msgstr ""
+
+#: newspaper-archive.php:195
+msgid "Newspaper Title"
+msgstr ""
+
+#: newspaper-archive.php:196
+msgid "Add Newspaper Title"
+msgstr ""
+
+#: newspaper-archive.php:197
+msgid "Edit Newspaper Title"
+msgstr ""
+
+#: newspaper-archive.php:198
+msgid "Search Newspaper Titles"
+msgstr ""
+
+#: newspaper-archive.php:199
+msgid "All Newspaper Titles"
+msgstr ""
+
+#: newspaper-archive.php:252
+msgid "Issue Metadata"
+msgstr ""
+
+#: newspaper-archive.php:273 newspaper-archive.php:363
+#: newspaper-archive.php:498
+msgid "Publication date"
+msgstr ""
+
+#: newspaper-archive.php:277
+msgid "Edition / number"
+msgstr ""
+
+#: newspaper-archive.php:281
+msgid "Number of pages"
+msgstr ""
+
+#: newspaper-archive.php:285
+msgid "Access"
+msgstr ""
+
+#: newspaper-archive.php:288
+msgid "Public (read and download)"
+msgstr ""
+
+#: newspaper-archive.php:289
+msgid "Members only (login required)"
+msgstr ""
+
+#: newspaper-archive.php:294
+msgid "PDF file"
+msgstr ""
+
+#: newspaper-archive.php:297 newspaper-archive.php:324
+msgid "No file selected"
+msgstr ""
+
+#: newspaper-archive.php:298
+msgid "Select or upload PDF"
+msgstr ""
+
+#: newspaper-archive.php:299
+msgid "Remove"
+msgstr ""
+
+#: newspaper-archive.php:322
+msgid "Select newspaper PDF"
+msgstr ""
+
+#: newspaper-archive.php:323
+msgid "Use this file"
+msgstr ""
+
+#: newspaper-archive.php:364 newspaper-archive.php:501
+msgid "Edition"
+msgstr ""
+
+#: newspaper-archive.php:433 newspaper-archive.php:436
+#: newspaper-archive.php:452
+msgid "File not found."
+msgstr ""
+
+#: newspaper-archive.php:439
+msgid "This issue is password protected."
+msgstr ""
+
+#: newspaper-archive.php:446
+msgid "You do not have access to this file."
+msgstr ""
+
+#: newspaper-archive.php:495 newspaper-archive.php:657
+msgid "Newspaper"
+msgstr ""
+
+#: newspaper-archive.php:504
+msgid "Pages"
+msgstr ""
+
+#: newspaper-archive.php:509
+msgid "The PDF file is not available yet."
+msgstr ""
+
+#: newspaper-archive.php:513
+msgid "This collection is for members only."
+msgstr ""
+
+#: newspaper-archive.php:515
+msgid "Log in to read it."
+msgstr ""
+
+#: newspaper-archive.php:526
+msgid "Open / download PDF"
+msgstr ""
+
+#: newspaper-archive.php:653 newspaper-archive.php:671
+msgid "Search"
+msgstr ""
+
+#: newspaper-archive.php:654
+msgid "Search title or keyword"
+msgstr ""
+
+#: newspaper-archive.php:658
+msgid "All newspapers"
+msgstr ""
+
+#: newspaper-archive.php:665
+msgid "Year"
+msgstr ""
+
+#: newspaper-archive.php:666
+msgid "All years"
+msgstr ""
+
+#. translators: %s: edition number or name.
+#: newspaper-archive.php:698
+#, php-format
+msgid "Edition %s"
+msgstr ""
+
+#: newspaper-archive.php:727
+msgid "&laquo; Previous"
+msgstr ""
+
+#: newspaper-archive.php:728
+msgid "Next &raquo;"
+msgstr ""
+
+#: newspaper-archive.php:732
+msgid "Pagination"
+msgstr ""
+
+#: newspaper-archive.php:735
+msgid "No matching issues found."
+msgstr ""
+
+#. Description of the plugin
+msgid "Manage and display a library's digital newspaper collection (PDF): issue metadata, search, title and year filters, and a built-in PDF reader."
+msgstr ""

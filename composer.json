@@ -1,0 +1,21 @@
+{
+  "name": "alamthelibrarian/newspaper-archive",
+  "description": "WordPress plugin for libraries to publish digital newspaper collections (PDF).",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later",
+  "authors": [{ "name": "Muhammad Saiful Alam", "homepage": "https://alam.web.id" }],
+  "require": { "php": ">=7.4" },
+  "require-dev": {
+    "wp-coding-standards/wpcs": "^3.0",
+    "phpcompatibility/phpcompatibility-wp": "^2.1",
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0"
+  },
+  "config": {
+    "allow-plugins": { "dealerdirect/phpcodesniffer-composer-installer": true }
+  },
+  "scripts": {
+    "lint": "find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l",
+    "cs": "phpcs",
+    "cbf": "phpcbf"
+  }
+}

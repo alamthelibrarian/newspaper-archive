@@ -1,0 +1,11 @@
+/vendor/
+/node_modules/
+/build/
+composer.lock
+*.zip
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+.phpcs-cache

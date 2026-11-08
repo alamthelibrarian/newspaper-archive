@@ -1,0 +1,1 @@
+Initial import of the Newspaper Archive WordPress plugin. See the project documentation in this repository.

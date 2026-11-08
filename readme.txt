@@ -21,7 +21,7 @@ Newspaper Archive helps libraries and archives publish scanned or born-digital n
 * Members-only issues are streamed through a PHP endpoint that checks the visitor's login.
 * Dublin Core meta tags on each issue page.
 * Fields exposed through the REST API.
-* Translations: English and Indonesian (id_ID).
+* English is the default interface language. An Indonesian translation source file (`id_ID.po`) is included; its compiled translation is not bundled.
 
 = Shortcode =
 
@@ -61,7 +61,7 @@ Nothing is deleted by default. To remove issues and titles on uninstall, define 
 * Added Apache/IIS denial files, Nginx configuration guidance, and a one-issue-per-attachment rule.
 
 = 0.2.0 =
-* First public release: unique function prefixes, translation-ready (English source, Indonesian included), members-only PDF endpoint, REST-exposed meta, Dublin Core tags, safe uninstall, sortable date column.
+* First public release: unique function prefixes, English source strings, Indonesian translation source, members-only PDF endpoint, REST-exposed meta, Dublin Core tags, safe uninstall, sortable date column.
 
 == Upgrade Notice ==
 

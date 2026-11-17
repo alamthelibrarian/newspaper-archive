@@ -35,7 +35,7 @@ The collection archive is available at `/newspaper-issues/` and each title at `/
 
 = Members-only files: important note =
 
-Public PDFs remain in the normal Media Library and keep their usual WordPress URLs. When a members-only issue is saved, its PDF is moved into a protected uploads subdirectory and served through the plugin after a login check. Apache and IIS denial files are created automatically. Nginx administrators must add a server rule for `/wp-content/uploads/newspaper-archive-private/`; see the repository's SECURITY.md for details. Existing members-only issues must be saved again after updating so their PDFs are moved into protected storage.
+Public PDFs remain in the normal Media Library and keep their usual WordPress URLs. When a members-only issue is saved, its PDF is moved into a protected uploads subdirectory and served through the plugin after a login check. Apache and IIS denial files are created automatically. Nginx administrators must add a server rule for `/wp-content/uploads/newspaper-archive-private/`; see the repository's SECURITY.md for details. After an update, existing members-only issues are migrated to protected storage automatically in background batches; an admin notice lists any issue that could not be protected. Preview images WordPress renders from a members-only PDF are deleted while it is protected.
 
 == Installation ==
 
@@ -52,7 +52,7 @@ Not yet. Full-text search of OCR output is on the roadmap.
 
 = What happens to my data if I delete the plugin? =
 
-Nothing is deleted by default. To remove issues and titles on uninstall, define `NEWSPAPER_ARCHIVE_REMOVE_DATA` as `true` in wp-config.php before deleting the plugin. PDFs in the Media Library are never removed.
+Nothing is deleted by default. To remove issues and titles on uninstall, define `NEWSPAPER_ARCHIVE_REMOVE_DATA` as `true` in wp-config.php before deleting the plugin. PDFs in the Media Library are never removed. Members-only PDFs stay in the protected directory, where the site can no longer serve them; to move them back to their public Media Library locations, also define `NEWSPAPER_ARCHIVE_RELEASE_FILES` as `true`.
 
 == Changelog ==
 

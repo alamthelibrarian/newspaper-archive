@@ -10,6 +10,13 @@
  *
  * PDF files in the Media Library are never deleted.
  *
+ * Members-only PDFs live in a protected uploads subdirectory that only this
+ * plugin can serve. They stay there after uninstall, so they are not exposed,
+ * but they are no longer reachable from the site. To move them back to their
+ * normal Media Library locations (making them public), also define:
+ *
+ *     define( 'NEWSPAPER_ARCHIVE_RELEASE_FILES', true );
+ *
  * @package NewspaperArchive
  */
 
@@ -17,7 +24,17 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/includes/storage.php';
+
 delete_transient( 'newspaper_archive_years' );
+wp_clear_scheduled_hook( 'newspaper_archive_migrate' );
+delete_option( 'newspaper_archive_storage_version' );
+delete_option( 'newspaper_archive_migration_cursor' );
+delete_option( 'newspaper_archive_migration_failures' );
+
+if ( defined( 'NEWSPAPER_ARCHIVE_RELEASE_FILES' ) && true === NEWSPAPER_ARCHIVE_RELEASE_FILES ) {
+	newspaper_archive_release_all_files();
+}
 
 if ( ! defined( 'NEWSPAPER_ARCHIVE_REMOVE_DATA' ) || true !== NEWSPAPER_ARCHIVE_REMOVE_DATA ) {
 	return;

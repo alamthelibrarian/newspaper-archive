@@ -19,6 +19,8 @@ jobs:
           php-version: ${{ matrix.php }}
       - name: Lint
         run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
+      - name: Storage regression test
+        run: php tests/storage-test.php
 
   coding-standards:
     name: WordPress Coding Standards
@@ -49,6 +51,7 @@ jobs:
           grep -qx 'newspaper-archive/newspaper-archive.php' package-files.txt
           grep -qx 'newspaper-archive/readme.txt' package-files.txt
           grep -qx 'newspaper-archive/uninstall.php' package-files.txt
+          grep -qx 'newspaper-archive/includes/storage.php' package-files.txt
           grep -qx 'newspaper-archive/languages/newspaper-archive-id_ID.po' package-files.txt
-          ! grep -qE '(^|/)(\.git|\.github|vendor|node_modules)(/|$)' package-files.txt
+          ! grep -qE '(^|/)(\.git|\.github|vendor|node_modules|tests)(/|$)' package-files.txt
           ! grep -q 'newspaper-archive/README.md' package-files.txt

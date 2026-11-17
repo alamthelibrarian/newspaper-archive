@@ -4,7 +4,7 @@ Tags: library, newspaper, archive, pdf, digital collection
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.3.0
+Stable tag: 0.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,7 +35,7 @@ The collection archive is available at `/newspaper-issues/` and each title at `/
 
 = Members-only files: important note =
 
-Public PDFs remain in the normal Media Library and keep their usual WordPress URLs. When a members-only issue is saved, its PDF is moved into a protected uploads subdirectory and served through the plugin after a login check. Apache and IIS denial files are created automatically. Nginx administrators must add a server rule for `/wp-content/uploads/newspaper-archive-private/`; see the repository's SECURITY.md for details. Existing members-only issues must be saved again after updating so their PDFs are moved into protected storage.
+Public PDFs remain in the normal Media Library and keep their usual WordPress URLs. When a members-only issue is saved, its PDF is moved into a protected uploads subdirectory and served through the plugin after a login check. Apache and IIS denial files are created automatically. Nginx administrators must add a server rule for `/wp-content/uploads/newspaper-archive-private/`; see the repository's SECURITY.md for details. After an update, existing members-only issues are migrated to protected storage automatically in background batches; an admin notice lists any issue that could not be protected. Preview images WordPress renders from a members-only PDF are deleted while it is protected.
 
 == Installation ==
 
@@ -52,9 +52,17 @@ Not yet. Full-text search of OCR output is on the roadmap.
 
 = What happens to my data if I delete the plugin? =
 
-Nothing is deleted by default. To remove issues and titles on uninstall, define `NEWSPAPER_ARCHIVE_REMOVE_DATA` as `true` in wp-config.php before deleting the plugin. PDFs in the Media Library are never removed.
+Nothing is deleted by default. To remove issues and titles on uninstall, define `NEWSPAPER_ARCHIVE_REMOVE_DATA` as `true` in wp-config.php before deleting the plugin. PDFs in the Media Library are never removed. Members-only PDFs stay in the protected directory, where the site can no longer serve them; to move them back to their public Media Library locations, also define `NEWSPAPER_ARCHIVE_RELEASE_FILES` as `true`.
 
 == Changelog ==
+
+= 0.4.0 =
+* Security: preview images WordPress renders from members-only PDFs are deleted while the PDF is protected and regenerated when it becomes public.
+* Security: attaching a PDF requires permission to edit that attachment.
+* Security: REST API changes to an issue's PDF or access level now apply the same storage rules as the editor.
+* Members-only issues from earlier versions are migrated to protected storage automatically in background batches.
+* Issue metadata is now exposed through the REST API.
+* New `NEWSPAPER_ARCHIVE_RELEASE_FILES` uninstall option; added `Update URI` header.
 
 = 0.3.0 =
 * Members-only PDFs are moved to protected storage and served after access checks; public PDFs retain normal Media Library URLs.
@@ -64,6 +72,9 @@ Nothing is deleted by default. To remove issues and titles on uninstall, define 
 * First public release: unique function prefixes, English source strings, Indonesian translation source, members-only PDF endpoint, REST-exposed meta, Dublin Core tags, safe uninstall, sortable date column.
 
 == Upgrade Notice ==
+
+= 0.4.0 =
+Security update. Members-only PDFs are migrated to protected storage automatically after updating, and their public preview images are removed. Back up your files first.
 
 = 0.3.0 =
 Save existing members-only issues again to migrate their PDFs into protected storage. Nginx servers require an additional deny rule.

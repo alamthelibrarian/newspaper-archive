@@ -47,7 +47,9 @@ The collection archive is available at `/newspaper-issues/`, and each newspaper 
 - A PDF attachment can be assigned to only one issue, preventing public and members-only access settings from conflicting.
 - If the server cannot create the protected directory or move the file, the plugin will not attach that PDF as a members-only file. Ensure the PHP process has the required filesystem permissions.
 - **Nginx requires an additional server rule** because it does not read `.htaccess`. See [SECURITY.md](SECURITY.md) for the configuration example.
-- Existing members-only issues must be opened and saved again after updating so their PDFs are moved from the public Media Library location. Back up the site first.
+- After updating, the plugin re-checks every members-only issue in small background (WP-Cron) batches and moves any PDF still in the public Media Library into protected storage. An admin notice lists issues it could not protect. Back up the site before updating.
+- WordPress's generated preview images of a members-only PDF (the rendered first page) are deleted while the PDF is protected, and regenerated when it becomes public again.
+- Attaching a PDF requires permission to edit that attachment, because a members-only issue moves the file out of its public location.
 - The `newspaper_archive_can_access` filter is available to customize application-level access checks.
 
 This protection depends on correct web-server configuration. Administrators should also review backups, CDN caches, and any previously exposed public copies of a PDF.
@@ -61,6 +63,12 @@ define( 'NEWSPAPER_ARCHIVE_REMOVE_DATA', true );
 ```
 
 PDF files in the Media Library are never deleted by the uninstall routine.
+
+Members-only PDFs stay in the protected directory after uninstall, so they are not exposed, but nothing on the site can serve them any more. To move them back to their original Media Library locations during uninstall (which makes them public), also add:
+
+```php
+define( 'NEWSPAPER_ARCHIVE_RELEASE_FILES', true );
+```
 
 ## Development roadmap
 

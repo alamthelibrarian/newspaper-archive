@@ -21,7 +21,7 @@ Reload the Nginx configuration after making this change. If WordPress uses a cus
 
 For Apache installations, ensure that `AllowOverride` permits access rules in the uploads directory. If `.htaccess` rules are not applied by the server, members-only PDFs may remain directly accessible. For environments requiring stronger confidentiality, storage outside the document root is a stronger option and must be configured by the server administrator.
 
-After updating the plugin, open and save each existing members-only issue again so its PDF is moved from the public Media Library location into protected storage. Back up your files first. Also check caches/CDNs and remove any old public copies that may have been retained.
+After an update, the plugin re-checks every members-only issue in background WP-Cron batches and moves any PDF still in the public Media Library into protected storage. It also deletes the preview images WordPress rendered from the first page of members-only PDFs. An admin notice is shown while this runs and lists any issue it could not protect; fix the cause (usually filesystem permissions) and save those issues again. If WP-Cron is disabled, make sure a system cron runs `wp-cron.php`. Back up your files first. Also check caches/CDNs and remove any old public copies that may have been retained.
 
 ## Reporting a vulnerability
 

@@ -18,6 +18,7 @@ cd newspaper-archive
 composer install        # Install PHP_CodeSniffer and WordPress Coding Standards
 composer lint           # Run php -l on all PHP files
 composer cs             # Run coding standards checks
+composer test           # Run the storage regression test
 ```
 
 Place the plugin folder in `wp-content/plugins/` in a local WordPress environment (for example, wp-env, LocalWP, or Docker).

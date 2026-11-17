@@ -16,6 +16,7 @@
   "scripts": {
     "lint": "find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l",
     "cs": "phpcs",
+    "test": "php tests/storage-test.php",
     "cbf": "phpcbf"
   }
 }

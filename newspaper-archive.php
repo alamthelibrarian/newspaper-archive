@@ -3,7 +3,7 @@
  * Plugin Name:       Newspaper Archive
  * Plugin URI:        https://github.com/alamthelibrarian/newspaper-archive
  * Description:       Manage and display a library's digital newspaper collection (PDF): issue metadata, search, title and year filters, and a built-in PDF reader.
- * Version:           0.3.0
+ * Version:           0.4.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Muhammad Saiful Alam
@@ -12,6 +12,7 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       newspaper-archive
  * Domain Path:       /languages
+ * Update URI:        https://github.com/alamthelibrarian/newspaper-archive
  *
  * @package NewspaperArchive
  */
@@ -20,9 +21,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NEWSPAPER_ARCHIVE_VERSION', '0.3.0' );
+define( 'NEWSPAPER_ARCHIVE_VERSION', '0.4.0' );
 define( 'NEWSPAPER_ARCHIVE_FILE', __FILE__ );
 define( 'NEWSPAPER_ARCHIVE_URL', plugin_dir_url( __FILE__ ) );
+define( 'NEWSPAPER_ARCHIVE_STORAGE_VERSION', 2 );
+
+require_once __DIR__ . '/includes/storage.php';
 
 // ------------------------------------------------------------------
 // 1. Helpers
@@ -80,157 +84,6 @@ function newspaper_archive_can_access( $post_id ) {
 	 * @param int  $post_id Issue ID.
 	 */
 	return (bool) apply_filters( 'newspaper_archive_can_access', $can, $post_id );
-}
-
-/**
- * Initialize the WordPress filesystem abstraction.
- *
- * @return WP_Filesystem_Base|false Filesystem instance.
- */
-function newspaper_archive_filesystem() {
-	global $wp_filesystem;
-	if ( ! function_exists( 'WP_Filesystem' ) ) {
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-	}
-	if ( ! WP_Filesystem() ) {
-		return false;
-	}
-	return $wp_filesystem;
-}
-
-/**
- * Ensure the private PDF directory has access-denial files for Apache and IIS.
- *
- * Nginx does not read .htaccess; its server configuration must deny this
- * directory separately (documented in SECURITY.md).
- *
- * @return string|false Absolute private directory, or false on failure.
- */
-function newspaper_archive_private_dir() {
-	$uploads = wp_upload_dir();
-	if ( ! empty( $uploads['error'] ) || empty( $uploads['basedir'] ) ) {
-		return false;
-	}
-	$directory = trailingslashit( $uploads['basedir'] ) . 'newspaper-archive-private';
-	if ( ! is_dir( $directory ) && ! wp_mkdir_p( $directory ) ) {
-		return false;
-	}
-	$filesystem = newspaper_archive_filesystem();
-	if ( ! $filesystem ) {
-		return false;
-	}
-	$rules       = "<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nOrder Allow,Deny\nDeny from all\n</IfModule>\nOptions -Indexes\n";
-	$deny        = trailingslashit( $directory ) . '.htaccess';
-	$web_config  = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" .
-		'<configuration><system.webServer><authorization><deny users="*" /></authorization></system.webServer></configuration>';
-	$config_path = trailingslashit( $directory ) . 'web.config';
-	$index       = trailingslashit( $directory ) . 'index.php';
-	if ( ( ! file_exists( $deny ) && ! $filesystem->put_contents( $deny, $rules, FS_CHMOD_FILE ) ) ||
-		( ! file_exists( $config_path ) && ! $filesystem->put_contents( $config_path, $web_config, FS_CHMOD_FILE ) ) ||
-		( ! file_exists( $index ) && ! $filesystem->put_contents( $index, "<?php\n// Silence is golden.\n", FS_CHMOD_FILE ) )
-	) {
-		return false;
-	}
-	return $directory;
-}
-
-/**
- * Check whether another issue already uses this attachment.
- *
- * @param int $attachment_id Attachment ID.
- * @param int $exclude_post_id Issue ID to exclude.
- * @return bool
- */
-function newspaper_archive_attachment_in_use( $attachment_id, $exclude_post_id = 0 ) {
-	$args = array(
-		'post_type'      => 'newspaper_issue',
-		'post_status'    => array( 'publish', 'private', 'draft', 'pending', 'future' ),
-		'posts_per_page' => 1,
-		'fields'         => 'ids',
-		'post__not_in'   => array( absint( $exclude_post_id ) ),
-		'meta_key'       => '_newspaper_archive_pdf_id', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- one-row attachment ownership check.
-		'meta_value'     => absint( $attachment_id ), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- one-row attachment ownership check.
-	);
-	return (bool) get_posts( $args );
-}
-
-/**
- * Move an attachment into or out of private storage as its issue access changes.
- *
- * The original uploads-relative path is retained in attachment metadata so a
- * public PDF can be restored to its normal Media Library URL.
- *
- * @param int    $attachment_id Attachment ID.
- * @param string $access        'members' or 'public'.
- * @return bool Whether the requested storage transition succeeded.
- */
-function newspaper_archive_set_file_access( $attachment_id, $access ) {
-	$attachment_id = absint( $attachment_id );
-	$uploads       = wp_upload_dir();
-	if ( ! $attachment_id || ! empty( $uploads['error'] ) || empty( $uploads['basedir'] ) ) {
-		return false;
-	}
-	$filesystem = newspaper_archive_filesystem();
-	if ( ! $filesystem ) {
-		return false;
-	}
-	$base_dir = wp_normalize_path( untrailingslashit( $uploads['basedir'] ) );
-	$relative = wp_normalize_path( (string) get_post_meta( $attachment_id, '_wp_attached_file', true ) );
-	$original = wp_normalize_path( (string) get_post_meta( $attachment_id, '_newspaper_archive_original_file', true ) );
-
-	if ( 'members' === $access ) {
-		if ( $original && 0 === strpos( $relative, 'newspaper-archive-private/' ) ) {
-			$directory = newspaper_archive_private_dir();
-			return $directory && is_readable( get_attached_file( $attachment_id ) );
-		}
-		if ( ! $relative || 0 === strpos( $relative, '/' ) || preg_match( '/(^|\\/)\\.\\.(\\/|$)/', $relative ) ) {
-			return false;
-		}
-		$source = trailingslashit( $base_dir ) . $relative;
-		$real   = realpath( $source );
-		if ( ! $real || 0 !== strpos( wp_normalize_path( $real ), trailingslashit( $base_dir ) ) || ! is_readable( $real ) ) {
-			return false;
-		}
-		$directory = newspaper_archive_private_dir();
-		if ( ! $directory ) {
-			return false;
-		}
-		$filename = $attachment_id . '-' . sanitize_file_name( basename( $relative ) );
-		$target   = trailingslashit( $directory ) . $filename;
-		if ( file_exists( $target ) && wp_normalize_path( $real ) !== wp_normalize_path( $target ) ) {
-			$filename = $attachment_id . '-' . wp_generate_password( 8, false ) . '-' . sanitize_file_name( basename( $relative ) );
-			$target   = trailingslashit( $directory ) . $filename;
-		}
-		if ( ! $filesystem->move( $real, $target, false ) ) {
-			return false;
-		}
-		update_post_meta( $attachment_id, '_newspaper_archive_original_file', $relative );
-		update_post_meta( $attachment_id, '_wp_attached_file', 'newspaper-archive-private/' . $filename );
-		return true;
-	}
-
-	if ( ! $original ) {
-		return true;
-	}
-	if ( 0 === strpos( $original, '/' ) || preg_match( '/(^|\\/)\\.\\.(\\/|$)/', $original ) ) {
-		return false;
-	}
-	$target     = trailingslashit( $base_dir ) . $original;
-	$source     = trailingslashit( $base_dir ) . $relative;
-	$target_dir = dirname( $target );
-	if ( ! is_dir( $target_dir ) && ! wp_mkdir_p( $target_dir ) ) {
-		return false;
-	}
-	if ( file_exists( $source ) ) {
-		if ( file_exists( $target ) || ! $filesystem->move( $source, $target, false ) ) {
-			return false;
-		}
-	} elseif ( ! file_exists( $target ) ) {
-		return false;
-	}
-	update_post_meta( $attachment_id, '_wp_attached_file', $original );
-	delete_post_meta( $attachment_id, '_newspaper_archive_original_file' );
-	return true;
 }
 
 /**
@@ -332,7 +185,7 @@ function newspaper_archive_register() {
 			'has_archive'  => apply_filters( 'newspaper_archive_collection_slug', 'newspaper-issues' ),
 			'rewrite'      => array( 'slug' => apply_filters( 'newspaper_archive_issue_slug', 'newspaper-issue' ) ),
 			'menu_icon'    => 'dashicons-media-document',
-			'supports'     => array( 'title', 'editor', 'thumbnail' ),
+			'supports'     => array( 'title', 'editor', 'thumbnail', 'custom-fields' ),
 			'show_in_rest' => true,
 		)
 	);
@@ -388,9 +241,138 @@ register_activation_hook(
 	function () {
 		newspaper_archive_register();
 		flush_rewrite_rules();
+		newspaper_archive_maybe_upgrade();
 	}
 );
-register_deactivation_hook( NEWSPAPER_ARCHIVE_FILE, 'flush_rewrite_rules' );
+
+register_deactivation_hook(
+	NEWSPAPER_ARCHIVE_FILE,
+	function () {
+		wp_clear_scheduled_hook( 'newspaper_archive_migrate' );
+		flush_rewrite_rules();
+	}
+);
+
+// ------------------------------------------------------------------
+// 3a. Storage migration
+// ------------------------------------------------------------------
+
+/**
+ * Start the background storage migration after an update.
+ *
+ * Versions before 0.3.0 kept members-only PDFs in the public Media Library, and
+ * 0.3.0 left their preview images public. Every members-only issue is therefore
+ * re-checked in small WP-Cron batches instead of relying on manual re-saves.
+ */
+function newspaper_archive_maybe_upgrade() {
+	if ( (int) get_option( 'newspaper_archive_storage_version', 0 ) >= NEWSPAPER_ARCHIVE_STORAGE_VERSION ) {
+		return;
+	}
+	update_option( 'newspaper_archive_storage_version', NEWSPAPER_ARCHIVE_STORAGE_VERSION );
+	update_option( 'newspaper_archive_migration_cursor', 0, false );
+	delete_option( 'newspaper_archive_migration_failures' );
+	if ( ! wp_next_scheduled( 'newspaper_archive_migrate' ) ) {
+		wp_schedule_single_event( time(), 'newspaper_archive_migrate' );
+	}
+}
+add_action( 'admin_init', 'newspaper_archive_maybe_upgrade' );
+
+/**
+ * Protect the PDFs of one batch of members-only issues.
+ *
+ * @param int $batch_size Number of issues per run.
+ * @return bool Whether more issues remain.
+ */
+function newspaper_archive_migrate_batch( $batch_size = 20 ) {
+	global $wpdb;
+	$cursor = get_option( 'newspaper_archive_migration_cursor', false );
+	if ( false === $cursor ) {
+		return false;
+	}
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- keyset pagination over a one-off migration.
+	$ids      = $wpdb->get_col(
+		$wpdb->prepare(
+			"SELECT p.ID FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID WHERE p.post_type = %s AND pm.meta_key = %s AND pm.meta_value = %s AND p.ID > %d ORDER BY p.ID ASC LIMIT %d",
+			'newspaper_issue',
+			'_newspaper_archive_access',
+			'members',
+			(int) $cursor,
+			(int) $batch_size
+		)
+	);
+	$failures = (array) get_option( 'newspaper_archive_migration_failures', array() );
+	foreach ( $ids as $post_id ) {
+		$post_id = (int) $post_id;
+		$pdf_id  = (int) newspaper_archive_meta( $post_id, 'pdf_id' );
+		if ( $pdf_id && ! newspaper_archive_set_file_access( $pdf_id, 'members' ) ) {
+			update_post_meta( $post_id, '_newspaper_archive_storage_error', 1 );
+			$failures[] = $post_id;
+		}
+		$cursor = $post_id;
+	}
+	update_option( 'newspaper_archive_migration_failures', array_values( array_unique( array_map( 'intval', $failures ) ) ), false );
+
+	if ( count( $ids ) < $batch_size ) {
+		delete_option( 'newspaper_archive_migration_cursor' );
+		return false;
+	}
+	update_option( 'newspaper_archive_migration_cursor', (int) $cursor, false );
+	return true;
+}
+
+add_action(
+	'newspaper_archive_migrate',
+	function () {
+		if ( newspaper_archive_migrate_batch() && ! wp_next_scheduled( 'newspaper_archive_migrate' ) ) {
+			wp_schedule_single_event( time() + 10, 'newspaper_archive_migrate' );
+		}
+	}
+);
+
+/**
+ * Report storage migration progress and failures to administrators.
+ */
+function newspaper_archive_migration_admin_notice() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+	if ( false !== get_option( 'newspaper_archive_migration_cursor', false ) ) {
+		echo '<div class="notice notice-info"><p>' .
+			esc_html__( 'Newspaper Archive is moving members-only PDFs into protected storage in the background. Until it finishes, some members-only files may still be publicly reachable.', 'newspaper-archive' ) .
+			'</p></div>';
+	}
+	$failures = array_filter(
+		(array) get_option( 'newspaper_archive_migration_failures', array() ),
+		function ( $post_id ) {
+			return get_post_meta( (int) $post_id, '_newspaper_archive_storage_error', true );
+		}
+	);
+	if ( ! $failures ) {
+		delete_option( 'newspaper_archive_migration_failures' );
+		return;
+	}
+	$links = array();
+	foreach ( array_slice( $failures, 0, 10 ) as $post_id ) {
+		$links[] = sprintf( '<a href="%s">%s</a>', esc_url( get_edit_post_link( (int) $post_id ) ), esc_html( get_the_title( (int) $post_id ) ) );
+	}
+	printf(
+		'<div class="notice notice-error"><p>%s %s</p></div>',
+		esc_html(
+			sprintf(
+				/* translators: %d: number of issues. */
+				_n(
+					'Newspaper Archive could not protect the PDF of %d members-only issue. Its file may still be publicly reachable; check that the uploads directory is writable, then save the issue again:',
+					'Newspaper Archive could not protect the PDFs of %d members-only issues. Their files may still be publicly reachable; check that the uploads directory is writable, then save each issue again:',
+					count( $failures ),
+					'newspaper-archive'
+				),
+				count( $failures )
+			)
+		),
+		wp_kses( implode( ', ', $links ), array( 'a' => array( 'href' => array() ) ) )
+	);
+}
+add_action( 'admin_notices', 'newspaper_archive_migration_admin_notice' );
 
 // ------------------------------------------------------------------
 // 4. Admin: meta box, columns, sorting
@@ -479,35 +461,43 @@ function newspaper_archive_admin_assets( $hook ) {
 add_action( 'admin_enqueue_scripts', 'newspaper_archive_admin_assets' );
 
 /**
- * Save the metadata box.
+ * Whether the current user may attach a PDF to an issue.
  *
- * @param int $post_id Post ID.
+ * Attaching a file to a members-only issue moves it out of its public location,
+ * so the user must be allowed to edit the attachment, not merely view it.
+ *
+ * @param int $pdf_id Attachment ID.
+ * @return bool
  */
-function newspaper_archive_save( $post_id ) {
-	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- nonce is verified below before any data is saved.
-	if ( ! isset( $_POST['newspaper_archive_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['newspaper_archive_nonce'] ) ), 'newspaper_archive_save' ) ) {
-		return;
-	}
-	if ( ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) || wp_is_post_revision( $post_id ) ) {
-		return;
-	}
-	if ( ! current_user_can( 'edit_post', $post_id ) ) {
-		return;
-	}
+function newspaper_archive_user_can_use_pdf( $pdf_id ) {
+	return $pdf_id
+		&& 'attachment' === get_post_type( $pdf_id )
+		&& 'application/pdf' === get_post_mime_type( $pdf_id )
+		&& current_user_can( 'edit_post', $pdf_id );
+}
 
-	update_post_meta( $post_id, '_newspaper_archive_date', newspaper_archive_sanitize_date( sanitize_text_field( wp_unslash( $_POST['newspaper_archive_date'] ?? '' ) ) ) );
-	update_post_meta( $post_id, '_newspaper_archive_edition', sanitize_text_field( wp_unslash( $_POST['newspaper_archive_edition'] ?? '' ) ) );
-	update_post_meta( $post_id, '_newspaper_archive_pages', absint( $_POST['newspaper_archive_pages'] ?? 0 ) );
-
-	// Only accept a PDF attachment the user is allowed to use.
-	$pdf_id = absint( $_POST['newspaper_archive_pdf_id'] ?? 0 );
-	if ( $pdf_id && ( 'application/pdf' !== get_post_mime_type( $pdf_id ) || ! current_user_can( 'read_post', $pdf_id ) ) ) {
-		$pdf_id = 0;
-	}
-	$access     = newspaper_archive_sanitize_access( sanitize_text_field( wp_unslash( $_POST['newspaper_archive_access'] ?? 'public' ) ) );
-	$old_pdf_id = (int) newspaper_archive_meta( $post_id, 'pdf_id' );
-
+/**
+ * Store an issue's PDF and access level, moving files between storage locations.
+ *
+ * Shared by the meta box and the REST API so both paths keep files and
+ * metadata consistent.
+ *
+ * @param int    $post_id    Issue ID.
+ * @param int    $pdf_id     Requested attachment ID (0 for none).
+ * @param string $access     Requested access level.
+ * @param int    $old_pdf_id Attachment ID stored before this save.
+ */
+function newspaper_archive_apply_file( $post_id, $pdf_id, $access, $old_pdf_id ) {
+	$pdf_id        = absint( $pdf_id );
+	$old_pdf_id    = absint( $old_pdf_id );
+	$access        = newspaper_archive_sanitize_access( $access );
 	$storage_error = false;
+
+	// Only accept a PDF attachment the user is allowed to edit. An unchanged file stays accepted.
+	if ( $pdf_id && $pdf_id !== $old_pdf_id && ! newspaper_archive_user_can_use_pdf( $pdf_id ) ) {
+		$pdf_id        = 0;
+		$storage_error = true;
+	}
 	// An attachment must belong to one issue so public and members-only access cannot conflict.
 	if ( $pdf_id && newspaper_archive_attachment_in_use( $pdf_id, $post_id ) ) {
 		$pdf_id        = 0;
@@ -529,9 +519,88 @@ function newspaper_archive_save( $post_id ) {
 	} else {
 		delete_post_meta( $post_id, '_newspaper_archive_storage_error' );
 	}
+}
+
+/**
+ * Save the metadata box.
+ *
+ * @param int $post_id Post ID.
+ */
+function newspaper_archive_save( $post_id ) {
+	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- nonce is verified below before any data is saved.
+	if ( ! isset( $_POST['newspaper_archive_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['newspaper_archive_nonce'] ) ), 'newspaper_archive_save' ) ) {
+		return;
+	}
+	if ( ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) || wp_is_post_revision( $post_id ) ) {
+		return;
+	}
+	if ( ! current_user_can( 'edit_post', $post_id ) ) {
+		return;
+	}
+
+	update_post_meta( $post_id, '_newspaper_archive_date', newspaper_archive_sanitize_date( sanitize_text_field( wp_unslash( $_POST['newspaper_archive_date'] ?? '' ) ) ) );
+	update_post_meta( $post_id, '_newspaper_archive_edition', sanitize_text_field( wp_unslash( $_POST['newspaper_archive_edition'] ?? '' ) ) );
+	update_post_meta( $post_id, '_newspaper_archive_pages', absint( $_POST['newspaper_archive_pages'] ?? 0 ) );
+
+	newspaper_archive_apply_file(
+		$post_id,
+		absint( $_POST['newspaper_archive_pdf_id'] ?? 0 ),
+		sanitize_text_field( wp_unslash( $_POST['newspaper_archive_access'] ?? 'public' ) ),
+		(int) newspaper_archive_meta( $post_id, 'pdf_id' )
+	);
 	// phpcs:enable
 }
 add_action( 'save_post_newspaper_issue', 'newspaper_archive_save' );
+
+/**
+ * Remember the PDF an issue had before a REST request changes its meta.
+ *
+ * @param int      $post_id Issue ID, or 0 to read only.
+ * @param int|null $pdf_id  Attachment ID to remember.
+ * @return int|null Remembered attachment ID.
+ */
+function newspaper_archive_rest_previous_pdf( $post_id, $pdf_id = null ) {
+	static $previous = array();
+	if ( null !== $pdf_id ) {
+		$previous[ $post_id ] = (int) $pdf_id;
+	}
+	return $previous[ $post_id ] ?? null;
+}
+
+add_filter(
+	'rest_pre_insert_newspaper_issue',
+	function ( $prepared_post, $request ) {
+		if ( ! empty( $request['id'] ) ) {
+			$post_id = absint( $request['id'] );
+			newspaper_archive_rest_previous_pdf( $post_id, (int) newspaper_archive_meta( $post_id, 'pdf_id' ) );
+		}
+		return $prepared_post;
+	},
+	10,
+	2
+);
+
+/**
+ * Apply file storage rules after the REST API wrote an issue's PDF or access meta.
+ *
+ * @param WP_Post         $post    Issue.
+ * @param WP_REST_Request $request Request.
+ */
+function newspaper_archive_rest_after_insert( $post, $request ) {
+	newspaper_archive_flush_cache();
+	$meta = $request['meta'];
+	if ( ! is_array( $meta ) || ( ! array_key_exists( '_newspaper_archive_pdf_id', $meta ) && ! array_key_exists( '_newspaper_archive_access', $meta ) ) ) {
+		return;
+	}
+	$previous = newspaper_archive_rest_previous_pdf( $post->ID );
+	newspaper_archive_apply_file(
+		$post->ID,
+		(int) newspaper_archive_meta( $post->ID, 'pdf_id' ),
+		(string) newspaper_archive_meta( $post->ID, 'access' ),
+		null === $previous ? 0 : $previous
+	);
+}
+add_action( 'rest_after_insert_newspaper_issue', 'newspaper_archive_rest_after_insert', 10, 2 );
 
 /**
  * Explain a failed file-storage operation on the issue edit screen.
@@ -547,7 +616,7 @@ function newspaper_archive_storage_admin_notice() {
 		return;
 	}
 	echo '<div class="notice notice-error"><p>' .
-		esc_html__( 'The PDF was not attached. Check that the file is not assigned to another issue and that the uploads directory is writable.', 'newspaper-archive' ) .
+		esc_html__( 'The PDF was not attached. Check that it is a PDF you are allowed to edit, that it is not assigned to another issue, and that the uploads directory is writable.', 'newspaper-archive' ) .
 		'</p></div>';
 }
 add_action( 'admin_notices', 'newspaper_archive_storage_admin_notice' );

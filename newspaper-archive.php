@@ -3,7 +3,7 @@
  * Plugin Name:       Newspaper Archive
  * Plugin URI:        https://github.com/alamthelibrarian/newspaper-archive
  * Description:       Manage and display a library's digital newspaper collection (PDF): issue metadata, search, title and year filters, and a built-in PDF reader.
- * Version:           0.3.0
+ * Version:           0.4.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Muhammad Saiful Alam
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NEWSPAPER_ARCHIVE_VERSION', '0.3.0' );
+define( 'NEWSPAPER_ARCHIVE_VERSION', '0.4.0' );
 define( 'NEWSPAPER_ARCHIVE_FILE', __FILE__ );
 define( 'NEWSPAPER_ARCHIVE_URL', plugin_dir_url( __FILE__ ) );
 define( 'NEWSPAPER_ARCHIVE_STORAGE_VERSION', 2 );

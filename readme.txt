@@ -4,7 +4,7 @@ Tags: library, newspaper, archive, pdf, digital collection
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.3.0
+Stable tag: 0.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,14 @@ Nothing is deleted by default. To remove issues and titles on uninstall, define 
 
 == Changelog ==
 
+= 0.4.0 =
+* Security: preview images WordPress renders from members-only PDFs are deleted while the PDF is protected and regenerated when it becomes public.
+* Security: attaching a PDF requires permission to edit that attachment.
+* Security: REST API changes to an issue's PDF or access level now apply the same storage rules as the editor.
+* Members-only issues from earlier versions are migrated to protected storage automatically in background batches.
+* Issue metadata is now exposed through the REST API.
+* New `NEWSPAPER_ARCHIVE_RELEASE_FILES` uninstall option; added `Update URI` header.
+
 = 0.3.0 =
 * Members-only PDFs are moved to protected storage and served after access checks; public PDFs retain normal Media Library URLs.
 * Added Apache/IIS denial files, Nginx configuration guidance, and a one-issue-per-attachment rule.
@@ -64,6 +72,9 @@ Nothing is deleted by default. To remove issues and titles on uninstall, define 
 * First public release: unique function prefixes, English source strings, Indonesian translation source, members-only PDF endpoint, REST-exposed meta, Dublin Core tags, safe uninstall, sortable date column.
 
 == Upgrade Notice ==
+
+= 0.4.0 =
+Security update. Members-only PDFs are migrated to protected storage automatically after updating, and their public preview images are removed. Back up your files first.
 
 = 0.3.0 =
 Save existing members-only issues again to migrate their PDFs into protected storage. Nginx servers require an additional deny rule.

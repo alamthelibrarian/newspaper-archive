@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.4.0] - 2026-11-17
 
 ### Security
 - Delete WordPress-generated preview images (rendered first page) of members-only PDFs, which previously stayed publicly reachable; regenerate them when a PDF becomes public again.

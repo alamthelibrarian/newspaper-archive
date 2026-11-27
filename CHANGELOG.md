@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- Issue cards, the no-cover placeholder and the PDF viewer area use a black background with white text instead of inheriting theme colours. Override with the `--na-card-bg` and `--na-card-fg` CSS custom properties.
+
 ## [0.4.0] - 2026-11-17
 
 ### Security
